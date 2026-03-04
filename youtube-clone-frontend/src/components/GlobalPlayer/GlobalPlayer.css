@@ -1,0 +1,189 @@
+.global-player {
+    position: fixed;
+    z-index: 2000;
+    transition: all var(--transition-normal);
+}
+
+.global-player--full {
+    top: var(--header-height);
+    left: var(--sidebar-width);
+    right: 0;
+    bottom: 0;
+    max-height: calc(100vh - 200px);
+    /* Limit vertical space */
+    background: #000;
+}
+
+/* Center the player in the main area */
+.global-player--full .global-player__container {
+    max-width: 1280px;
+    margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .global-player--full {
+        left: 0;
+        bottom: auto;
+        width: 100%;
+        aspect-ratio: 16/9;
+    }
+}
+
+.global-player__container {
+    width: 100%;
+    height: 100%;
+}
+
+
+.global-player--mini {
+    bottom: 24px;
+    right: 24px;
+    width: 400px;
+    height: 225px;
+    /* 16:9 ratio for 400px width */
+    background: var(--bg-secondary);
+    box-shadow: var(--shadow-elevated);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    border: 1px solid var(--border-light);
+}
+
+/* Mobile Miniplayer: A bar at the bottom */
+@media (max-width: 768px) {
+    .global-player--mini {
+        width: 100%;
+        height: 64px;
+        bottom: calc(var(--mobile-nav-height) + env(safe-area-inset-bottom));
+        left: 0;
+        right: 0;
+        border-radius: 0;
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        flex-direction: row-reverse;
+        background: rgba(15, 15, 15, 0.9);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Progress bar line at top of miniplayer */
+    .global-player--mini::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 2px;
+        background: var(--accent-primary);
+        width: var(--player-progress, 0%);
+        z-index: 100;
+        transition: width 0.3s linear;
+    }
+
+    /* In mini mobile mode, we shrink the video but KEEP it visible */
+    .global-player--mini .player {
+        width: 114px !important;
+        height: 100% !important;
+        aspect-ratio: auto !important;
+        background: #000;
+    }
+
+    .global-player--mini .player__video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    /* Hide regular player controls in mini mode bar */
+    .global-player--mini .player__controls,
+    .global-player--mini .player__big-play {
+        display: none !important;
+    }
+}
+
+/* --- Miniplayer Info Styles --- */
+.global-player__mini-controls {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    gap: 12px;
+    pointer-events: none;
+    transition: opacity 0.3s;
+}
+
+.global-player--mini:hover .global-player__mini-controls {
+    opacity: 1;
+}
+
+.global-player__mini-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.global-player__mini-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.global-player__mini-channel {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.global-player__close-btn {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 100;
+    opacity: 0;
+    /* Hidden by default */
+}
+
+/* On Desktop mini player, show close button on container hover */
+.global-player--mini:hover .global-player__close-btn {
+    opacity: 1;
+}
+
+.global-player__close-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+    transform: scale(1.1);
+}
+
+@media (max-width: 768px) {
+    .global-player__mini-controls {
+        background: rgba(15, 15, 15, 0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        padding: 0 12px;
+        position: relative;
+        height: 100%;
+        gap: 8px;
+        pointer-events: auto;
+    }
+}

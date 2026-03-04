@@ -1,0 +1,26 @@
+﻿[dotenv@17.3.1] injecting env (10) from .env -- tip: ≡ƒ¢í∩╕Å auth for agents: https://vestauth.com
+[ApiKeyManager] Γ£ô Loaded 1 API key(s)
+node : [Cache] ΓÜá Redis 
+unavailable, using in-memory 
+cache: Connection is closed.
+At line:1 char:1
++ node src/server.js 2>&1 | 
+Out-File -FilePath 
+"error_log.txt" -Encodin ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo           
+   : NotSpecified: ([Cache]  
+   ΓÜá Red...tion is close   
+ d.:String) [], RemoteExc    
+eption
+    + FullyQualifiedErrorId  
+   : NativeCommandError
+ 
+
+ΓòöΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòù
+Γòæ   YouTube Clone Backend ΓÇö Ready!             Γòæ
+Γòæ   Port: 3001                              Γòæ
+Γòæ   Env:  development                     Γòæ
+Γòæ   Client URL: http://localhost:5173     Γòæ
+ΓòÜΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓò¥
+    

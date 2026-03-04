@@ -1,0 +1,16 @@
+{
+    "name": "youtube-premium-clone",
+    "version": "1.0.0",
+    "description": "YouTube Premium Clone with SponsorBlock and Background Playback",
+    "scripts": {
+        "install:backend": "cd youtube-clone-backend && npm install",
+        "install:frontend": "cd youtube-clone-frontend && npm install",
+        "install:all": "npm run install:backend && npm run install:frontend",
+        "dev:backend": "cd youtube-clone-backend && npm run dev",
+        "dev:frontend": "cd youtube-clone-frontend && npm run dev",
+        "start": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
+}

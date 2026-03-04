@@ -1,0 +1,6 @@
+/* App-level overrides and global layout tweaks */
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
