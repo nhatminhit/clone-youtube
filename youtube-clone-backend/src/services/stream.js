@@ -68,7 +68,18 @@ class StreamService {
     async _fetchFormats(videoId) {
         const cacheKey = `formats:${videoId}`;
 
-        // === Strategy 1: yt-dlp (most reliable) ===
+        // === Strategy 1: Piped API (Highly reliable for Datacenters, try FIRST) ===
+        try {
+            const pipedFormats = await this.getFormatsFromPiped(videoId);
+            if (pipedFormats && pipedFormats.length > 0) {
+                await cache.set(cacheKey, pipedFormats, 3600);
+                return pipedFormats;
+            }
+        } catch (err) {
+            console.error('[StreamService] Piped strategy failed:', err.message);
+        }
+
+        // === Strategy 2: yt-dlp (reliable but blocked on Render) ===
         try {
             const info = await ytdlp(`https://www.youtube.com/watch?v=${videoId}`, {
                 dumpSingleJson: true,
@@ -108,7 +119,7 @@ class StreamService {
             // yt-dlp failed, will try fallback...
         }
 
-        // === Strategy 2: ytdl-core (fallback) ===
+        // === Strategy 3: ytdl-core (fallback) ===
         try {
             const url = `https://www.youtube.com/watch?v=${videoId}`;
             const info = await ytdl.getInfo(url, {
@@ -132,17 +143,6 @@ class StreamService {
             }
         } catch (err) {
             // ytdl-core failed
-        }
-
-        // === Strategy 3: Piped API (Highly reliable for Datacenters) ===
-        try {
-            const pipedFormats = await this.getFormatsFromPiped(videoId);
-            if (pipedFormats && pipedFormats.length > 0) {
-                await cache.set(cacheKey, pipedFormats, 3600);
-                return pipedFormats;
-            }
-        } catch (err) {
-            console.error('[StreamService] Piped strategy failed:', err.message);
         }
 
         // === Strategy 4: Invidious (last resort) ===
