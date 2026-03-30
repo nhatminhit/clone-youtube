@@ -2,12 +2,8 @@
     "version": 2,
     "rewrites": [
         {
-            "source": "/api/(.*)",
-            "destination": "/youtube-clone-backend/src/server.js"
-        },
-        {
             "source": "/(.*)",
-            "destination": "/youtube-clone-frontend/$1"
+            "destination": "/index.html"
         }
     ]
 }
