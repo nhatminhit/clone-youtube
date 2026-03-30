@@ -547,22 +547,73 @@ export default function VideoPlayer({ videoId, videoDetails }) {
 
     // YouTube Embed Fallback - when backend can't provide stream URLs
     if (useEmbedFallback) {
+        const embedParams = new URLSearchParams({
+            autoplay: '1',
+            rel: '0',
+            modestbranding: '1',
+            controls: '1',           // Show YouTube's built-in controls
+            playsinline: '1',
+            enablejsapi: '1',
+            iv_load_policy: '3',     // Hide annotations
+            fs: '1',                 // Allow fullscreen
+            cc_load_policy: '0',
+        }).toString();
+
+        const handleEmbedFullscreen = () => {
+            if (containerRef.current) {
+                if (!document.fullscreenElement) {
+                    containerRef.current.requestFullscreen().catch(() => {});
+                } else {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+        };
+
         return (
             <div
-                className="player"
+                className="player player--embed"
                 ref={containerRef}
                 id="video-player"
-                style={{ aspectRatio: '16/9' }}
+                style={{ aspectRatio: '16/9', position: 'relative' }}
             >
                 <iframe
                     className="player__video"
-                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                    src={`https://www.youtube.com/embed/${videoId}?${embedParams}`}
                     title={videoDetails?.title || 'Video'}
                     frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     allowFullScreen
-                    style={{ width: '100%', height: '100%', borderRadius: '12px' }}
+                    style={{ width: '100%', height: '100%', borderRadius: '12px', border: 'none' }}
                 />
+                {/* Floating fullscreen button for embed mode */}
+                <button
+                    className="player__btn player__embed-fullscreen"
+                    onClick={handleEmbedFullscreen}
+                    title="Toàn màn hình"
+                    style={{
+                        position: 'absolute',
+                        bottom: '56px',
+                        right: '12px',
+                        zIndex: 10,
+                        background: 'rgba(0,0,0,0.6)',
+                        borderRadius: '50%',
+                        width: '40px',
+                        height: '40px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        border: 'none',
+                        opacity: 0.8,
+                        transition: 'opacity 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '0.8'}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                    </svg>
+                </button>
             </div>
         );
     }
