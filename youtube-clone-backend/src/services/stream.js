@@ -65,12 +65,14 @@ class StreamService {
 
         // === Strategy 1: youtubei.js (Reliable for Datacenters) ===
         try {
-            const { Innertube } = require('youtubei.js');
+            const { Innertube, Platform } = require('youtubei.js');
             if (!this.ytInstance) {
-                this.ytInstance = await Innertube.create({ 
-                    retrieve_player: true,
-                    generate_session_locally: true
-                });
+                // Provide custom JS evaluator for deciphering YouTube signatures
+                Platform.shim.eval = (code, env) => {
+                    const fn = new Function('env', `${code}`);
+                    return fn(env);
+                };
+                this.ytInstance = await Innertube.create();
             }
             const info = await this.ytInstance.getInfo(videoId);
             const sd = info.streaming_data;
