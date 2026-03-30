@@ -76,7 +76,8 @@ router.get('/:id/streams', async (req, res) => {
         const formats = await streamService.getFormats(id);
         res.json({ videoId: id, formats });
     } catch (err) {
-        console.error(`[Route /api/video/${req.params.id}/streams] Error:`, err.message);
+        // Log as a warning instead of error, since the Frontend expects and handles this via YouTube Embed Fallback.
+        console.warn(`[Route /api/video/${req.params.id}/streams] Stream extraction failed (expected on Render IP). Falling back to Embed.`);
         res.status(500).json({ error: 'Failed to get stream formats', details: err.message });
     }
 });
@@ -91,7 +92,7 @@ router.get('/:id/stream/video', async (req, res) => {
         const stream = await streamService.getVideoStream(id, quality);
         res.json(stream);
     } catch (err) {
-        console.error(`[Route /api/video/${req.params.id}/stream/video] Error:`, err.message);
+        console.warn(`[Route /api/video/${req.params.id}/stream/video] Direct stream unavailable (Render IP issue). Frontend will default to Embed.`);
         res.status(500).json({ error: 'Failed to get video stream', details: err.message });
     }
 });
