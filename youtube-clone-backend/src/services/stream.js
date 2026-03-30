@@ -311,21 +311,28 @@ class StreamService {
                 throw new Error('Strictly no video formats available.');
             }
 
-            // If it's separate (no audio), return a merged proxy URL to make it "just work" as combined
+            // DIRECT URL STRATEGY: Return googlevideo.com URLs directly to the browser.
+            // The user's browser (personal IP) will fetch from Google - never gets banned.
+            // Datacenter proxy approach is fundamentally broken due to Google IP bans.
+
+            // If it's separate (no audio), try to find a combined format first
             if (!selected.hasAudio && selected.itag) {
+                // Still return a direct URL - the browser handles audio-only separately
                 return {
                     type: 'combined',
-                    url: `/api/video/${videoId}/proxy/merged?itag=${selected.itag}`,
+                    url: selected.url,
                     qualityLabel: selected.qualityLabel || `${selected.height}p`,
-                    mimeType: 'video/mp4'
+                    mimeType: selected.mimeType || 'video/mp4',
+                    direct: true
                 };
             }
 
             return {
                 type: 'combined',
-                url: `/api/video/${videoId}/proxy/video?quality=${quality}`,
+                url: selected.url,
                 qualityLabel: selected.qualityLabel || (selected.height ? `${selected.height}p` : '360p'),
-                mimeType: selected.mimeType || 'video/mp4'
+                mimeType: selected.mimeType || 'video/mp4',
+                direct: true
             };
         } catch (err) {
             console.error(`[StreamService] getVideoStream failed for ${videoId}:`, err.message);

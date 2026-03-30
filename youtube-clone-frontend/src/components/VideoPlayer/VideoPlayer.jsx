@@ -72,8 +72,16 @@ export default function VideoPlayer({ videoId, videoDetails }) {
 
                 setAvailableQualities(uniqueQualities);
 
-                const BACKEND_URL = 'http://localhost:3001';
-                const resolveUrl = (url) => (url && url.startsWith('/api') ? `${BACKEND_URL}${url}` : url);
+                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+                const BACKEND_URL = API_BASE.replace(/\/api$/, '');
+                const resolveUrl = (url) => {
+                    if (!url) return url;
+                    // Direct googlevideo.com URLs - use as-is
+                    if (url.startsWith('http')) return url;
+                    // Relative /api/ URLs - prepend backend
+                    if (url.startsWith('/api')) return `${BACKEND_URL}${url}`;
+                    return url;
+                };
 
                 if (streamData.type === 'combined') {
                     setStreamUrl(resolveUrl(streamData.url));
@@ -99,8 +107,14 @@ export default function VideoPlayer({ videoId, videoDetails }) {
         const currentTime = videoRef.current.currentTime;
         const wasPlaying = !videoRef.current.paused;
 
-        const BACKEND_URL = 'http://localhost:3001';
-        const resolveUrl = (url) => (url && url.startsWith('/api') ? `${BACKEND_URL}${url}` : url);
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const BACKEND_URL = API_BASE.replace(/\/api$/, '');
+        const resolveUrl = (url) => {
+            if (!url) return url;
+            if (url.startsWith('http')) return url;
+            if (url.startsWith('/api')) return `${BACKEND_URL}${url}`;
+            return url;
+        };
 
         if (format === 'auto') {
             setSelectedQuality('auto');
@@ -109,12 +123,10 @@ export default function VideoPlayer({ videoId, videoDetails }) {
             });
         } else {
             setSelectedQuality(format.qualityLabel);
-
-            // If it's a video-only format (like 1080p/2160p), use our merged proxy
-            if (!format.hasAudio) {
-                setStreamUrl(`${BACKEND_URL}/api/video/${videoId}/proxy/merged?itag=${format.itag}`);
+            // Use direct URL from format data (googlevideo.com)
+            if (format.url) {
+                setStreamUrl(format.url);
             } else {
-                // Use proxy for combined formats too to ensure it works (bypass IP/CORS)
                 setStreamUrl(`${BACKEND_URL}/api/video/${videoId}/proxy/video?itag=${format.itag}`);
             }
         }
@@ -257,7 +269,8 @@ export default function VideoPlayer({ videoId, videoDetails }) {
     const lastTapRef = useRef(0);
 
     const handleDownload = (type) => {
-        const BACKEND_URL = 'http://localhost:3001';
+        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const BACKEND_URL = API_BASE.replace(/\/api$/, '');
         const downloadUrl = `${BACKEND_URL}/api/video/download/${videoId}?type=${type}`;
 
         // Use a hidden anchor tag to trigger download reliably without new tab issues
