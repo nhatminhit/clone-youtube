@@ -25,10 +25,13 @@ export default function VideoPlayer({ videoId, videoDetails }) {
     const [availableQualities, setAvailableQualities] = useState([]);
     const [selectedQuality, setSelectedQuality] = useState('auto');
 
+    const [useEmbedFallback, setUseEmbedFallback] = useState(false);
+
     // Load stream URL and sponsor segments
     useEffect(() => {
         if (!videoId) return;
         let cancelled = false;
+        setUseEmbedFallback(false);
 
         async function load() {
             setLoading(true);
@@ -39,12 +42,11 @@ export default function VideoPlayer({ videoId, videoDetails }) {
                 if (videoDetails?.preloadedStream) {
                     streamData = videoDetails.preloadedStream;
                     sponsorData = { segments: videoDetails.preloadedSponsors || [] };
-                    // We still need formats for the quality menu, but we can fetch it separately
                     formatsData = await getFormats(videoId).catch(() => ({ formats: [] }));
                 } else {
                     // Fallback to individual fetches
                     const results = await Promise.all([
-                        getVideoStream(videoId),
+                        getVideoStream(videoId).catch(() => null),
                         getSponsorSegments(videoId),
                         getFormats(videoId).catch(() => ({ formats: [] }))
                     ]);
@@ -55,12 +57,20 @@ export default function VideoPlayer({ videoId, videoDetails }) {
 
                 if (cancelled) return;
 
+                // FALLBACK: If backend can't provide stream (IP banned), use YouTube embed
+                if (!streamData || !streamData.url) {
+                    console.warn('[VideoPlayer] No stream URL from backend, falling back to YouTube embed');
+                    setUseEmbedFallback(true);
+                    setLoading(false);
+                    setSponsorSegments(sponsorData?.segments || []);
+                    return;
+                }
+
                 // Get ALL video formats for quality menu
                 const allFormats = (formatsData.formats || [])
                     .filter(f => f.hasVideo)
                     .sort((a, b) => (parseInt(b.height) || 0) - (parseInt(a.height) || 0));
 
-                // Dedup and pick best representative itag per quality label
                 const uniqueQualities = [];
                 const seen = new Set();
                 for (const f of allFormats) {
@@ -76,9 +86,7 @@ export default function VideoPlayer({ videoId, videoDetails }) {
                 const BACKEND_URL = API_BASE.replace(/\/api$/, '');
                 const resolveUrl = (url) => {
                     if (!url) return url;
-                    // Direct googlevideo.com URLs - use as-is
                     if (url.startsWith('http')) return url;
-                    // Relative /api/ URLs - prepend backend
                     if (url.startsWith('/api')) return `${BACKEND_URL}${url}`;
                     return url;
                 };
@@ -92,6 +100,7 @@ export default function VideoPlayer({ videoId, videoDetails }) {
                 setSponsorSegments(sponsorData.segments || []);
             } catch (err) {
                 console.error('Failed to load stream:', err);
+                if (!cancelled) setUseEmbedFallback(true);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -535,6 +544,28 @@ export default function VideoPlayer({ videoId, videoDetails }) {
 
         handleTimeUpdate();
     };
+
+    // YouTube Embed Fallback - when backend can't provide stream URLs
+    if (useEmbedFallback) {
+        return (
+            <div
+                className="player"
+                ref={containerRef}
+                id="video-player"
+                style={{ aspectRatio: '16/9' }}
+            >
+                <iframe
+                    className="player__video"
+                    src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1`}
+                    title={videoDetails?.title || 'Video'}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    style={{ width: '100%', height: '100%', borderRadius: '12px' }}
+                />
+            </div>
+        );
+    }
 
     return (
         <div
