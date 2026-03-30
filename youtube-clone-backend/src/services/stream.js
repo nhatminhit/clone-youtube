@@ -73,19 +73,22 @@ class StreamService {
             const formatsRaw = [...(info.streaming_data?.formats || []), ...(info.streaming_data?.adaptive_formats || [])];
 
             const mapped = formatsRaw.map(f => {
-                const url = f.url || (f.decipher ? f.decipher(this.ytInstance.session.player) : null);
+                let url = f.decipher ? f.decipher(this.ytInstance.session.player) : f.url;
+                // youtubei.js returns URL objects, not strings - must convert
+                if (url && typeof url === 'object' && url.toString) url = url.toString();
+                if (url && typeof url !== 'string') url = String(url);
                 return {
                     itag: f.itag,
                     mimeType: f.mime_type || `video/mp4`,
                     qualityLabel: f.quality_label || (f.height ? `${f.height}p` : null),
-                    url: url,
+                    url: url || null,
                     hasVideo: f.has_video,
                     hasAudio: f.has_audio,
                     bitrate: f.bitrate || 0,
                     height: f.height || 0,
                     width: f.width || 0,
                 };
-            }).filter(f => f.url);
+            }).filter(f => f.url && typeof f.url === 'string' && f.url.startsWith('http'));
 
             if (mapped.length > 0) {
                 await cache.set(cacheKey, mapped, 3600);
