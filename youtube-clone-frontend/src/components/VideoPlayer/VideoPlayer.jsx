@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { getVideoStream, getAudioStream, getAudioProxyUrl, getSponsorSegments, getFormats } from '../../api';
+import { getVideoStream, getAudioStream, getSponsorSegments, getFormats } from '../../api';
 import './VideoPlayer.css';
 
 export default function VideoPlayer({ videoId, videoDetails }) {
@@ -172,62 +172,7 @@ export default function VideoPlayer({ videoId, videoDetails }) {
         return () => clearInterval(interval);
     }, [sponsorSegments]);
 
-    // Background Playback — Visibility API
-    const isPlayingRef = useRef(isPlaying);
-    useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-
-    const isBackgroundModeRef = useRef(isBackgroundMode);
-    useEffect(() => { isBackgroundModeRef.current = isBackgroundMode; }, [isBackgroundMode]);
-
-    useEffect(() => {
-        const handleVisibility = async () => {
-            if (document.visibilityState === 'hidden' && isPlayingRef.current) {
-                // Switch to audio-only mode
-                setIsBackgroundMode(true);
-                try {
-                    if (!audioRef.current) {
-                        audioRef.current = new Audio();
-                    }
-
-                    const time = videoRef.current?.currentTime || 0;
-                    const proxyUrl = getAudioProxyUrl(videoId);
-
-                    audioRef.current.src = proxyUrl;
-                    audioRef.current.volume = volume;
-
-                    // IMPORTANT: Wait for metadata before seeking to prevent reset to 0
-                    audioRef.current.onloadedmetadata = () => {
-                        audioRef.current.currentTime = time;
-                        audioRef.current.play().catch(() => { });
-                    };
-
-                    if (videoRef.current) {
-                        videoRef.current.pause();
-                    }
-                } catch (err) {
-                    console.error('Background audio failed:', err);
-                }
-            } else if (document.visibilityState === 'visible' && isBackgroundModeRef.current) {
-                // Switch back to video mode
-                setIsBackgroundMode(false);
-                if (audioRef.current && videoRef.current) {
-                    const time = audioRef.current.currentTime;
-
-                    audioRef.current.pause();
-                    audioRef.current.src = '';
-
-                    // Sync time back to video
-                    videoRef.current.currentTime = time;
-                    if (isPlayingRef.current) {
-                        videoRef.current.play().catch(() => { });
-                    }
-                }
-            }
-        };
-
-        document.addEventListener('visibilitychange', handleVisibility);
-        return () => document.removeEventListener('visibilitychange', handleVisibility);
-    }, [videoId, volume]);
+    // Background playback deleted because proxy routes were removed to optimize backend RAM
 
     // Media Session API
     useEffect(() => {

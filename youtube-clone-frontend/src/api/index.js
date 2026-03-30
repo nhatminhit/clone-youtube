@@ -127,12 +127,7 @@ export const getAudioStream = async (videoId) => {
     return data;
 };
 
-/**
- * Get audio proxy URL (for direct use in <audio> element)
- */
-export const getAudioProxyUrl = (videoId) => {
-    return `${API_BASE}/video/${videoId}/proxy/audio`;
-};
+
 
 /**
  * Get SponsorBlock segments
