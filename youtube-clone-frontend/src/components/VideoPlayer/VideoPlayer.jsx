@@ -272,28 +272,9 @@ export default function VideoPlayer({ videoId, videoDetails }) {
 
     const [playbackRate, setPlaybackRate] = useState(1);
     const [showSettings, setShowSettings] = useState(false);
-    const [showDownloadMenu, setShowDownloadMenu] = useState(false);
     const [isPiP, setIsPiP] = useState(false);
     const [seekingVisual, setSeekingVisual] = useState(null); // { side: 'left' | 'right' }
     const lastTapRef = useRef(0);
-
-    const handleDownload = (type) => {
-        const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-        const BACKEND_URL = API_BASE.replace(/\/api$/, '');
-        const downloadUrl = `${BACKEND_URL}/api/video/download/${videoId}?type=${type}`;
-
-        // Use a hidden anchor tag to trigger download reliably without new tab issues
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = '';
-        link.target = '_blank'; // Force browser to handle download in background
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        setShowDownloadMenu(false);
-        showToast(`Bắt đầu tải ${type === 'audio' ? 'MP3' : 'MP4'}...`);
-    };
 
     const seek = useCallback((seconds) => {
         if (!videoRef.current) return;
@@ -743,47 +724,12 @@ export default function VideoPlayer({ videoId, videoDetails }) {
                     </div>
 
                     <div className="player__controls-right">
-                        <div className="player__settings-container">
-                            <button
-                                className={`player__btn ${showDownloadMenu ? 'player__btn--active' : ''}`}
-                                onClick={() => {
-                                    setShowDownloadMenu(!showDownloadMenu);
-                                    setShowSettings(false);
-                                }}
-                                title="Tải xuống"
-                            >
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                                    <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" />
-                                </svg>
-                            </button>
-
-                            {showDownloadMenu && (
-                                <div className="player__settings-menu player__download-menu">
-                                    <div className="player__settings-section">
-                                        <div className="player__settings-header">Tải xuống</div>
-                                        <button className="player__settings-opt" onClick={() => handleDownload('video')}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
-                                                <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z" />
-                                            </svg>
-                                            Video (.mp4)
-                                        </button>
-                                        <button className="player__settings-opt" onClick={() => handleDownload('audio')}>
-                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style={{ marginRight: '8px' }}>
-                                                <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                                            </svg>
-                                            Audio (.mp3)
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
                         <div className="player__settings-container">
                             <button
                                 className={`player__btn ${showSettings ? 'player__btn--active' : ''}`}
                                 onClick={() => {
                                     setShowSettings(!showSettings);
-                                    setShowDownloadMenu(false);
                                 }}
                                 title="Cài đặt"
                             >
