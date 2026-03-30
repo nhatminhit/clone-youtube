@@ -157,18 +157,18 @@ class StreamService {
 
     async getFormatsFromPiped(videoId) {
         const instances = [
+            'https://pi.ggtyler.dev',
             'https://pipedapi.kavin.rocks',
+            'https://pipedapi.tokhmi.xyz',
             'https://pipedapi.syncpundit.io',
             'https://pipedapi.lunar.icu',
-            'https://piped-api.garudalinux.org',
-            'https://pipedapi.tokhmi.xyz',
-            'https://pi.ggtyler.dev'
+            'https://piped-api.garudalinux.org'
         ];
         
         for (const instance of instances) {
             try {
                 const response = await axios.get(`${instance}/streams/${videoId}`, { 
-                    timeout: 7000,
+                    timeout: 4000,
                     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36' }
                 });
                 const data = response.data;
