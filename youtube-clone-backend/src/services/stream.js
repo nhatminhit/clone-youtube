@@ -63,32 +63,47 @@ class StreamService {
     async _fetchFormats(videoId) {
         const cacheKey = `formats:${videoId}`;
 
-        // === Strategy 1: youtubei.js (Extremely reliable for Datacenters, avoids Chrome IP bans) ===
+        // === Strategy 1: youtubei.js (Reliable for Datacenters) ===
         try {
-            const { Innertube, UniversalCache } = require('youtubei.js');
+            const { Innertube } = require('youtubei.js');
             if (!this.ytInstance) {
-                this.ytInstance = await Innertube.create({ cache: new UniversalCache(false) });
+                this.ytInstance = await Innertube.create({ 
+                    retrieve_player: true,
+                    generate_session_locally: true
+                });
             }
             const info = await this.ytInstance.getInfo(videoId);
-            const formatsRaw = [...(info.streaming_data?.formats || []), ...(info.streaming_data?.adaptive_formats || [])];
+            const sd = info.streaming_data;
+            if (!sd) throw new Error('No streaming_data');
 
-            const mapped = formatsRaw.map(f => {
-                let url = f.decipher ? f.decipher(this.ytInstance.session.player) : f.url;
-                // youtubei.js returns URL objects, not strings - must convert
-                if (url && typeof url === 'object' && url.toString) url = url.toString();
-                if (url && typeof url !== 'string') url = String(url);
-                return {
+            const formatsRaw = [...(sd.formats || []), ...(sd.adaptive_formats || [])];
+            const mapped = [];
+            
+            for (const f of formatsRaw) {
+                let url = null;
+                try {
+                    url = f.decipher ? f.decipher(this.ytInstance.session.player) : f.url;
+                    if (url && typeof url === 'object') url = url.toString();
+                    if (url && typeof url !== 'string') url = String(url);
+                } catch(e) { continue; }
+                
+                if (!url || !url.startsWith('http')) continue;
+                
+                mapped.push({
                     itag: f.itag,
-                    mimeType: f.mime_type || `video/mp4`,
+                    mimeType: f.mime_type || 'video/mp4',
                     qualityLabel: f.quality_label || (f.height ? `${f.height}p` : null),
-                    url: url || null,
-                    hasVideo: f.has_video,
-                    hasAudio: f.has_audio,
+                    url,
+                    hasVideo: !!f.has_video,
+                    hasAudio: !!f.has_audio,
                     bitrate: f.bitrate || 0,
                     height: f.height || 0,
                     width: f.width || 0,
-                };
-            }).filter(f => f.url && typeof f.url === 'string' && f.url.startsWith('http'));
+                });
+            }
+            
+            // Free memory
+            info.streaming_data = null;
 
             if (mapped.length > 0) {
                 await cache.set(cacheKey, mapped, 3600);
