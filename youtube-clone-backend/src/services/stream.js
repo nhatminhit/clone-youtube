@@ -68,7 +68,39 @@ class StreamService {
     async _fetchFormats(videoId) {
         const cacheKey = `formats:${videoId}`;
 
-        // === Strategy 1: Piped API (Highly reliable for Datacenters, try FIRST) ===
+        // === Strategy 1: youtubei.js (Extremely reliable for Datacenters, avoids Chrome IP bans) ===
+        try {
+            const { Innertube, UniversalCache } = require('youtubei.js');
+            if (!this.ytInstance) {
+                this.ytInstance = await Innertube.create({ cache: new UniversalCache(false) });
+            }
+            const info = await this.ytInstance.getInfo(videoId);
+            const formatsRaw = [...(info.streaming_data?.formats || []), ...(info.streaming_data?.adaptive_formats || [])];
+
+            const mapped = formatsRaw.map(f => {
+                const url = f.url || (f.decipher ? f.decipher(this.ytInstance.session.player) : null);
+                return {
+                    itag: f.itag,
+                    mimeType: f.mime_type || `video/mp4`,
+                    qualityLabel: f.quality_label || (f.height ? `${f.height}p` : null),
+                    url: url,
+                    hasVideo: f.has_video,
+                    hasAudio: f.has_audio,
+                    bitrate: f.bitrate || 0,
+                    height: f.height || 0,
+                    width: f.width || 0,
+                };
+            }).filter(f => f.url);
+
+            if (mapped.length > 0) {
+                await cache.set(cacheKey, mapped, 3600);
+                return mapped;
+            }
+        } catch (err) {
+            console.error('[StreamService] youtubei.js strategy failed:', err.message);
+        }
+
+        // === Strategy 2: Piped API (Fallback) ===
         try {
             const pipedFormats = await this.getFormatsFromPiped(videoId);
             if (pipedFormats && pipedFormats.length > 0) {
@@ -79,7 +111,7 @@ class StreamService {
             console.error('[StreamService] Piped strategy failed:', err.message);
         }
 
-        // === Strategy 2: yt-dlp (reliable but blocked on Render) ===
+        // === Strategy 3: yt-dlp (reliable but blocked on Render) ===
         try {
             const info = await ytdlp(`https://www.youtube.com/watch?v=${videoId}`, {
                 dumpSingleJson: true,
@@ -88,7 +120,7 @@ class StreamService {
                 preferFreeFormats: false,
                 addHeader: [
                     'referer:youtube.com',
-                    'user-agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    'user-agent:Mozilla/5.0'
                 ]
             });
 
@@ -97,11 +129,11 @@ class StreamService {
             }
 
             const mapped = info.formats
-                .filter(f => f.url) // only formats with direct URLs
+                .filter(f => f.url)
                 .map(f => ({
                     itag: parseInt(f.format_id) || 0,
                     mimeType: f.ext === 'mp4' ? 'video/mp4' : f.ext === 'webm' ? 'video/webm' : (f.ext === 'm4a' ? 'audio/mp4' : `video/${f.ext}`),
-                    qualityLabel: f.resolution && f.resolution !== 'audio only' ? f.resolution.replace('x', 'p').split('p').pop() ? f.height + 'p' : f.resolution : null,
+                    qualityLabel: f.resolution && f.resolution !== 'audio only' ? (f.resolution.replace('x', 'p').split('p').pop() ? f.height + 'p' : f.resolution) : null,
                     url: f.url,
                     hasVideo: f.vcodec !== 'none' && !!f.vcodec,
                     hasAudio: f.acodec !== 'none' && !!f.acodec,
@@ -114,35 +146,8 @@ class StreamService {
                 await cache.set(cacheKey, mapped, 3600);
                 return mapped;
             }
-            throw new Error('yt-dlp mapped 0 usable formats');
         } catch (err) {
-            // yt-dlp failed, will try fallback...
-        }
-
-        // === Strategy 3: ytdl-core (fallback) ===
-        try {
-            const url = `https://www.youtube.com/watch?v=${videoId}`;
-            const info = await ytdl.getInfo(url, {
-                requestOptions: { headers: this.getRandomHeaders() }
-            });
-
-            if (info.formats && info.formats.length > 0) {
-                const mapped = info.formats.map((format) => ({
-                    itag: format.itag,
-                    mimeType: format.mimeType,
-                    qualityLabel: format.qualityLabel || null,
-                    url: format.url,
-                    hasVideo: format.hasVideo,
-                    hasAudio: format.hasAudio,
-                    bitrate: format.bitrate,
-                    height: format.height,
-                    width: format.width,
-                }));
-                await cache.set(cacheKey, mapped, 3600);
-                return mapped;
-            }
-        } catch (err) {
-            // ytdl-core failed
+            // yt-dlp failed
         }
 
         // === Strategy 4: Invidious (last resort) ===
