@@ -67,10 +67,13 @@ class StreamService {
         try {
             const { Innertube, Platform } = require('youtubei.js');
             if (!this.ytInstance) {
-                // Provide custom JS evaluator for deciphering YouTube signatures
-                Platform.shim.eval = (code, env) => {
-                    const fn = new Function('env', `${code}`);
-                    return fn(env);
+                // Provide custom JS evaluator for deciphering YouTube signatures (required by v17+)
+                Platform.shim.eval = async (data, env) => {
+                    const properties = [];
+                    if (env.n) properties.push(`n: exportedVars.nFunction("${env.n}")`);
+                    if (env.sig) properties.push(`sig: exportedVars.sigFunction("${env.sig}")`);
+                    const code = `${data.output}\nreturn { ${properties.join(', ')} }`;
+                    return new Function(code)();
                 };
                 this.ytInstance = await Innertube.create();
             }
@@ -84,7 +87,7 @@ class StreamService {
             for (const f of formatsRaw) {
                 let url = null;
                 try {
-                    url = f.decipher ? f.decipher(this.ytInstance.session.player) : f.url;
+                    url = f.decipher ? await f.decipher(this.ytInstance.session.player) : f.url;
                     if (url && typeof url === 'object') url = url.toString();
                     if (url && typeof url !== 'string') url = String(url);
                 } catch(e) { continue; }
