@@ -25,17 +25,12 @@ class StreamService {
     }
 
     getRandomHeaders() {
-        const ua = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+        // Using Android App User-Agent to match youtubei.js generated stream URLs
+        // Web User-Agents (Chrome) cause 403 Forbidden when accessing these signed URLs.
         return {
-            'User-Agent': ua,
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Referer': 'https://www.youtube.com/',
-            'DNT': '1',
-            'Sec-Fetch-Dest': 'document',
-            'Sec-Fetch-Mode': 'navigate',
-            'Sec-Fetch-Site': 'none',
-            'Sec-Fetch-User': '?1',
+            'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip',
+            'Accept': '*/*',
+            'Origin': 'https://www.youtube.com',
             'Upgrade-Insecure-Requests': '1'
         };
     }
@@ -484,7 +479,13 @@ class StreamService {
                 mimeType = selected.mimeType || 'video/mp4';
             }
 
-            const headers = this.getRandomHeaders();
+            // Do NOT use standard Chrome headers because youtubei.js generates Android/TV links.
+            // Using a random desktop browser User-Agent causes GoogleVideo to return 403 Forbidden.
+            const headers = {
+                'Accept': '*/*',
+                'Origin': 'https://www.youtube.com',
+                'User-Agent': 'com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip'
+            };
             if (range) headers['Range'] = range;
 
             // Use AbortController for proper cleanup when client disconnects
@@ -495,9 +496,8 @@ class StreamService {
                 url: selectedUrl,
                 responseType: 'stream',
                 headers: headers,
-                timeout: 15000, // Connection timeout only (time to first byte)
+                timeout: 15000, 
                 signal: abortController.signal,
-                // Don't limit the transfer time for streaming
                 maxContentLength: Infinity,
                 maxBodyLength: Infinity
             });

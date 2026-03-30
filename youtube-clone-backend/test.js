@@ -1,10 +1,20 @@
-const { Innertube } = require('youtubei.js');
+const axios = require('axios');
 async function run() {
-    const yt = await Innertube.create();
-    const info = await yt.getInfo('r5bzZLEH4R4');
-    let f = info.streaming_data.formats[0];
-    if(!f) f = info.streaming_data.adaptive_formats[0];
-    const url = f.url || (f.decipher ? f.decipher(yt.session.player) : null);
-    console.log("URL:", url ? url.substring(0, 50) : 'none');
+    try {
+        const res = await axios.post('https://api.cobalt.tools/api/json', {
+            url: 'https://www.youtube.com/watch?v=r5bzZLEH4R4',
+            videoQuality: 'max',
+            filenamePattern: 'nerd'
+        }, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0'
+            }
+        });
+        console.log("COBALT SUCCESS:", res.data);
+    } catch(e) {
+        console.log("COBALT ERROR:", e.message, e.response?.status, e.response?.data);
+    }
 }
 run();
