@@ -275,7 +275,7 @@ class YouTubeService {
             await cache.set(cacheKey, result, config.cacheTTL.search);
             return result;
         } catch (err) {
-            console.error(`[YouTube Search Fallback] Error for ${videoId}:`, err.message);
+            console.warn(`[YouTube Search Fallback] Warning for ${videoId}:`, err.message);
             return { items: [] };
         }
     }

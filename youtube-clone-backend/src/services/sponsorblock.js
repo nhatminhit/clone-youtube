@@ -58,7 +58,7 @@ class SponsorBlockService {
                 await cache.set(cacheKey, [], 21600);
                 return [];
             }
-            console.error(`[SponsorBlock] Error fetching segments for ${videoId}:`, err.message);
+            console.warn(`[SponsorBlock] Warning fetching segments for ${videoId}:`, err.message);
             return [];
         }
     }
