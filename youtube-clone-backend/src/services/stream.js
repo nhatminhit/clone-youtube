@@ -134,12 +134,71 @@ class StreamService {
             // ytdl-core failed
         }
 
-        // === Strategy 3: Invidious (last resort) ===
+        // === Strategy 3: Piped API (Highly reliable for Datacenters) ===
+        try {
+            const pipedFormats = await this.getFormatsFromPiped(videoId);
+            if (pipedFormats && pipedFormats.length > 0) {
+                await cache.set(cacheKey, pipedFormats, 3600);
+                return pipedFormats;
+            }
+        } catch (err) {
+            console.error('[StreamService] Piped strategy failed:', err.message);
+        }
+
+        // === Strategy 4: Invidious (last resort) ===
         const invidiousFormats = await this.getFormatsFromInvidious(videoId);
         if (invidiousFormats && invidiousFormats.length > 0) {
             await cache.set(cacheKey, invidiousFormats, 3600);
+            return invidiousFormats;
         }
-        return invidiousFormats;
+
+        throw new Error('All stream sources failed to return formats (IP Ban possible).');
+    }
+
+    async getFormatsFromPiped(videoId) {
+        const instances = [
+            'https://pipedapi.kavin.rocks',
+            'https://pipedapi.tokhmi.xyz',
+            'https://pi.ggtyler.dev'
+        ];
+        
+        for (const instance of instances) {
+            try {
+                const response = await axios.get(`${instance}/streams/${videoId}`, { timeout: 7000 });
+                const data = response.data;
+                if (!data || !data.videoStreams) continue;
+
+                const mappedFormats = [
+                    ...data.videoStreams.map(f => ({
+                        itag: f.itag,
+                        qualityLabel: f.quality,
+                        url: f.url,
+                        hasVideo: true,
+                        hasAudio: !f.videoOnly,
+                        mimeType: f.mimeType || `video/${f.format.toLowerCase()}`,
+                        height: parseInt(f.quality) || 0,
+                        width: 0,
+                        bitrate: f.bitrate || 0
+                    })),
+                    ...data.audioStreams.map(f => ({
+                        itag: f.itag,
+                        qualityLabel: null,
+                        url: f.url,
+                        hasVideo: false,
+                        hasAudio: true,
+                        mimeType: f.mimeType || `audio/${f.format.toLowerCase()}`,
+                        height: 0,
+                        width: 0,
+                        bitrate: f.bitrate || 0
+                    }))
+                ];
+
+                if (mappedFormats.length > 0) return mappedFormats;
+            } catch (err) {
+                continue;
+            }
+        }
+        return null;
     }
 
     /**
