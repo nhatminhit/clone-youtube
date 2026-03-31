@@ -38,7 +38,7 @@ export default function History() {
                     <p>This list has no videos.</p>
                 </div>
             ) : (
-                <div className="video-grid">
+                <div className="history-grid">
                     {history.map((video, index) => (
                         <VideoCard key={`${video.id}-${index}`} video={video} index={index} />
                     ))}

@@ -44,6 +44,7 @@ export default function Watch() {
                         id, 
                         title: data.details.title, 
                         thumbnail: data.details.thumbnail,
+                        thumbnailHigh: data.details.thumbnailHigh,
                         channelTitle: data.details.channelTitle,
                         watchedAt: new Date().toISOString()
                     };

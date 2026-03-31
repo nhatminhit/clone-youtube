@@ -25,92 +25,24 @@ export default function VideoPlayer({ videoId, videoDetails }) {
     const [availableQualities, setAvailableQualities] = useState([]);
     const [selectedQuality, setSelectedQuality] = useState('auto');
 
-    const [useEmbedFallback, setUseEmbedFallback] = useState(false);
+    const [useEmbedFallback, setUseEmbedFallback] = useState(true);
 
-    // Load stream URL and sponsor segments
+    // Still load sponsors for info, but video is handled by iframe
     useEffect(() => {
         if (!videoId) return;
         let cancelled = false;
-        setUseEmbedFallback(false);
 
         async function load() {
             setLoading(true);
             try {
-                let streamData, sponsorData, formatsData;
-
-                // 1. Race the stream data fetch with a 4s timeout for proactive fallback
-                const streamFetchPromise = videoDetails?.preloadedStream 
-                    ? Promise.resolve(videoDetails.preloadedStream)
-                    : getVideoStream(videoId).catch(() => null);
-
-                const timeoutPromise = new Promise((resolve) => 
-                    setTimeout(() => resolve({ isTimeout: true }), 4000)
-                );
-
-                // Fetch sponsors and formats in parallel with the race
-                const otherDataPromise = Promise.all([
-                    getSponsorSegments(videoId).catch(() => ({ segments: [] })),
-                    getFormats(videoId).catch(() => ({ formats: [] }))
-                ]);
-
-                const [winner, otherData] = await Promise.all([
-                    Promise.race([streamFetchPromise, timeoutPromise]),
-                    otherDataPromise
-                ]);
-
-                if (cancelled) return;
+                // Pre-fetch sponsors in background
+                getSponsorSegments(videoId).then(data => {
+                    if (!cancelled) setSponsorSegments(data?.segments || []);
+                }).catch(() => {});
                 
-                sponsorData = otherData[0];
-                formatsData = otherData[1];
-
-                // If timeout reached or no stream data, fallback proactively
-                if (winner?.isTimeout || !winner || !winner.url) {
-                    console.warn(winner?.isTimeout 
-                        ? '[VideoPlayer] Stream fetch timed out, using Embed fallback' 
-                        : '[VideoPlayer] No stream URL, using Embed fallback');
-                    setUseEmbedFallback(true);
-                    setLoading(false);
-                    setSponsorSegments(sponsorData?.segments || []);
-                    return;
-                }
-
-                streamData = winner;
-
-                // Get ALL video formats for quality menu
-                const allFormats = (formatsData.formats || [])
-                    .filter(f => f.hasVideo)
-                    .sort((a, b) => (parseInt(b.height) || 0) - (parseInt(a.height) || 0));
-
-                const uniqueQualities = [];
-                const seen = new Set();
-                for (const f of allFormats) {
-                    if (f.qualityLabel && !seen.has(f.qualityLabel)) {
-                        uniqueQualities.push(f);
-                        seen.add(f.qualityLabel);
-                    }
-                }
-
-                setAvailableQualities(uniqueQualities);
-
-                const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-                const BACKEND_URL = API_BASE.replace(/\/api$/, '');
-                const resolveUrl = (url) => {
-                    if (!url) return url;
-                    if (url.startsWith('http')) return url;
-                    if (url.startsWith('/api')) return `${BACKEND_URL}${url}`;
-                    return url;
-                };
-
-                if (streamData.type === 'combined') {
-                    setStreamUrl(resolveUrl(streamData.url));
-                } else if (streamData.type === 'separate') {
-                    setStreamUrl(resolveUrl(streamData.video.url));
-                }
-
-                setSponsorSegments(sponsorData.segments || []);
+                setLoading(false);
             } catch (err) {
-                console.error('Failed to load stream:', err);
-                if (!cancelled) setUseEmbedFallback(true);
+                console.error('Failed to load player data:', err);
             } finally {
                 if (!cancelled) setLoading(false);
             }

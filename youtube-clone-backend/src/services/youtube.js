@@ -280,7 +280,13 @@ class YouTubeService {
             return result;
         } catch (err) {
             console.warn(`[YouTube Search Fallback] Warning for ${videoId}:`, err.message);
-            return { items: [] };
+            // Fallback to trending if search fails
+            try {
+                const trending = await this.getTrending();
+                return { items: trending.items.slice(0, maxResults) };
+            } catch (e) {
+                return { items: [] };
+            }
         }
     }
 }
