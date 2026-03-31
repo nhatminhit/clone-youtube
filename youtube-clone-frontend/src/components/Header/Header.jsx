@@ -1,18 +1,89 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { searchVideos } from '../../api';
 import './Header.css';
 
 export default function Header() {
     const [query, setQuery] = useState('');
     const [isFocused, setIsFocused] = useState(false);
     const [showMobileSearch, setShowMobileSearch] = useState(false);
+    const [suggestions, setSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [activeIndex, setActiveIndex] = useState(-1);
     const navigate = useNavigate();
+    const debounceTimer = useRef(null);
+    const wrapperRef = useRef(null);
+
+    // Debounced search suggestions
+    const fetchSuggestions = useCallback((q) => {
+        if (debounceTimer.current) clearTimeout(debounceTimer.current);
+        if (!q.trim() || q.trim().length < 2) {
+            setSuggestions([]);
+            setShowSuggestions(false);
+            return;
+        }
+
+        debounceTimer.current = setTimeout(async () => {
+            try {
+                const data = await searchVideos(q.trim(), 5);
+                const titles = (data.items || []).map(item => item.title).filter(Boolean);
+                setSuggestions(titles.slice(0, 8));
+                setShowSuggestions(true);
+                setActiveIndex(-1);
+            } catch {
+                setSuggestions([]);
+            }
+        }, 350);
+    }, []);
+
+    useEffect(() => {
+        fetchSuggestions(query);
+        return () => clearTimeout(debounceTimer.current);
+    }, [query, fetchSuggestions]);
+
+    // Close suggestions when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+                setShowSuggestions(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handleSearch = (e) => {
         e.preventDefault();
-        if (query.trim()) {
-            navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+        const q = query.trim();
+        if (q) {
+            navigate(`/search?q=${encodeURIComponent(q)}`);
             setShowMobileSearch(false);
+            setShowSuggestions(false);
+            setSuggestions([]);
+        }
+    };
+
+    const handleSuggestionClick = (suggestion) => {
+        setQuery(suggestion);
+        navigate(`/search?q=${encodeURIComponent(suggestion)}`);
+        setShowSuggestions(false);
+        setSuggestions([]);
+    };
+
+    const handleKeyDown = (e) => {
+        if (!showSuggestions || suggestions.length === 0) return;
+
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.min(prev + 1, suggestions.length - 1));
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setActiveIndex(prev => Math.max(prev - 1, -1));
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+            e.preventDefault();
+            handleSuggestionClick(suggestions[activeIndex]);
+        } else if (e.key === 'Escape') {
+            setShowSuggestions(false);
         }
     };
 
@@ -51,8 +122,10 @@ export default function Header() {
             )}
 
             <form
+                ref={wrapperRef}
                 className={`header__search ${isFocused ? 'header__search--focused' : ''} ${showMobileSearch ? 'header__search--mobile-active' : ''}`}
                 onSubmit={handleSearch}
+                style={{ position: 'relative' }}
             >
                 <div className="header__search-input-wrap">
                     <input
@@ -62,9 +135,34 @@ export default function Header() {
                         placeholder="Search"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        onFocus={() => setIsFocused(true)}
+                        onFocus={() => {
+                            setIsFocused(true);
+                            if (suggestions.length > 0) setShowSuggestions(true);
+                        }}
                         onBlur={() => setIsFocused(false)}
+                        onKeyDown={handleKeyDown}
+                        autoComplete="off"
                     />
+
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && suggestions.length > 0 && (
+                        <ul className="header__suggestions" role="listbox" id="search-suggestions">
+                            {suggestions.map((s, i) => (
+                                <li
+                                    key={i}
+                                    className={`header__suggestion-item ${i === activeIndex ? 'header__suggestion-item--active' : ''}`}
+                                    onMouseDown={() => handleSuggestionClick(s)}
+                                    role="option"
+                                    aria-selected={i === activeIndex}
+                                >
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="header__suggestion-icon">
+                                        <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                                    </svg>
+                                    <span>{s}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
                 <button type="submit" className="header__search-btn" id="search-btn" aria-label="Search">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
@@ -97,5 +195,3 @@ export default function Header() {
         </header>
     );
 }
-
-

@@ -3,6 +3,7 @@ const apiKeyManager = require('./apiKeyManager');
 const cache = require('./cache');
 const config = require('../config');
 const Agent = require('agentkeepalive');
+const { parseStringPromise } = require('xml2js');
 
 const HttpsAgent = Agent.HttpsAgent;
 const httpsAgent = new HttpsAgent({
@@ -247,29 +248,28 @@ class YouTubeService {
             // First, get the current video's info to search by title
             const videoDetails = await this.getVideoDetails(videoId);
             if (!videoDetails || !videoDetails.title) {
-                return { items: [] };
+                throw new Error('No video details');
             }
 
             // Search by title (keyword based fallback)
-            // Filter some generic words for better relevance
             const searchTitle = videoDetails.title.slice(0, 40);
             const data = await this._apiRequest('search', {
                 part: 'snippet',
                 q: searchTitle,
                 type: 'video',
-                maxResults: maxResults + 1, // Get 1 extra to exclude the current one
+                maxResults: maxResults + 1,
             });
 
             const result = {
                 items: (data.items || [])
-                    .filter(item => item.id.videoId !== videoId) // Exclude current video
+                    .filter(item => item.id.videoId !== videoId)
                     .slice(0, maxResults)
                     .map((item) => ({
                         id: item.id.videoId,
                         title: item.snippet.title,
                         description: item.snippet.description,
                         thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
-                        thumbnailHigh: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url,
+                        thumbnailHigh: item.snippet.thumbnails?.high?.url || item.snippet.thumbnails?.medium?.url,
                         channelTitle: item.snippet.channelTitle,
                         channelId: item.snippet.channelId,
                         publishedAt: item.snippet.publishedAt,
@@ -279,15 +279,49 @@ class YouTubeService {
             await cache.set(cacheKey, result, config.cacheTTL.search);
             return result;
         } catch (err) {
-            console.warn(`[YouTube Search Fallback] Warning for ${videoId}:`, err.message);
-            // Fallback to trending if search fails
+            console.warn(`[YouTube] getRelatedVideos failed (${err.message}), using RSS fallback`);
+            // Fallback to RSS feed - NO API KEY NEEDED
             try {
-                const trending = await this.getTrending();
-                return { items: trending.items.slice(0, maxResults) };
+                return await this._getRssFallback(maxResults);
             } catch (e) {
+                console.error('[YouTube] RSS fallback also failed:', e.message);
                 return { items: [] };
             }
         }
+    }
+
+    /**
+     * Get trending videos via YouTube RSS feed (no API key required).
+     * Used as a fallback when API quota is exhausted.
+     */
+    async _getRssFallback(maxResults = 10) {
+        const cacheKey = `rss-fallback:${maxResults}`;
+        const cached = await cache.get(cacheKey);
+        if (cached) return cached;
+
+        const rssUrl = 'https://www.youtube.com/feeds/videos.xml?chart=most_popular&hl=vi&gl=VN';
+        const response = await axios.get(rssUrl, { timeout: 8000 });
+        const parsed = await parseStringPromise(response.data, { explicitArray: false });
+
+        const entries = parsed?.feed?.entry;
+        const list = Array.isArray(entries) ? entries : entries ? [entries] : [];
+
+        const items = list.slice(0, maxResults).map(entry => {
+            const videoId = entry['yt:videoId'];
+            return {
+                id: videoId,
+                title: entry.title,
+                thumbnail: `https://i.ytimg.com/vi/${videoId}/mqdefault.jpg`,
+                thumbnailHigh: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
+                channelTitle: entry?.author?.name || 'YouTube',
+                channelId: entry?.['yt:channelId'] || '',
+                publishedAt: entry.published,
+            };
+        });
+
+        const result = { items, source: 'rss' };
+        await cache.set(cacheKey, result, 1800); // Cache 30 mins
+        return result;
     }
 }
 
