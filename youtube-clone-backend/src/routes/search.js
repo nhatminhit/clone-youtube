@@ -23,7 +23,7 @@ router.get('/', async (req, res) => {
 
         res.json(data);
     } catch (err) {
-        console.error('[Route /api/search] Error:', err.message);
+        console.error('[Route /api/search] Error:', err.message, err.response?.data || '');
         res.status(500).json({ error: 'Failed to search videos', details: err.message });
     }
 });

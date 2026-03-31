@@ -25,7 +25,7 @@ export default function Search() {
                 if (!cancelled) {
                     setResults(data.items || []);
                     setNextPageToken(data.nextPageToken);
-                    setTotalResults(data.pageInfo?.totalResults || 0); // Corrected property access
+                    setTotalResults(data.totalResults || 0);
                     document.title = `${query} - YouTube Search`;
                 }
             } catch (err) {
@@ -49,7 +49,7 @@ export default function Search() {
             setResults((prev) => [...prev, ...(data.items || [])]);
             setNextPageToken(data.nextPageToken);
         } catch (err) {
-            console.error('Load more failed:', err);
+            console.error('[Route /api/search] Error:', err.message, err.response?.data || '');
         }
     };
 

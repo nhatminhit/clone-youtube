@@ -6,6 +6,7 @@ import Home from './pages/Home/Home';
 import Search from './pages/Search/Search';
 import Watch from './pages/Watch/Watch';
 import Trending from './pages/Trending/Trending';
+import History from './pages/History/History';
 import GlobalPlayer from './components/GlobalPlayer/GlobalPlayer';
 import { usePlayer } from './context/PlayerContext';
 import './App.css';
