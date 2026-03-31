@@ -18,16 +18,15 @@ router.get('/:id/combined-watch', async (req, res) => {
         const cachedResponse = await youtubeService.cache.get(cacheKey);
         if (cachedResponse) return res.json(cachedResponse);
 
-        const [details, related, stream, sponsors] = await Promise.all([
+        const [details, stream, sponsors] = await Promise.all([
             youtubeService.getVideoDetails(id).catch(() => null),
-            youtubeService.getRelatedVideos(id, 15).catch(() => ({ items: [] })),
             streamService.getVideoStream(id, quality).catch(() => null),
             sponsorBlockService.getSegments(id).catch(() => [])
         ]);
 
         if (!details) return res.status(404).json({ error: 'Video not found' });
 
-        const result = { videoId: id, details, related: related.items || [], stream, sponsors: sponsors || [] };
+        const result = { videoId: id, details, stream, sponsors: sponsors || [] };
         await youtubeService.cache.set(cacheKey, result, 300);
         res.json(result);
     } catch (err) {

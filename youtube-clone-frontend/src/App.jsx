@@ -32,6 +32,7 @@ function App() {
           <Route path="/search" element={<Search />} />
           <Route path="/watch/:id" element={<Watch />} />
           <Route path="/trending" element={<Trending />} />
+          <Route path="/history" element={<History />} />
         </Routes>
       </main>
       <GlobalPlayer />

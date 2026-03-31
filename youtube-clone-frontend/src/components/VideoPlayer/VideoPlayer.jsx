@@ -38,33 +38,43 @@ export default function VideoPlayer({ videoId, videoDetails }) {
             try {
                 let streamData, sponsorData, formatsData;
 
-                // 1. Try preloaded data from Watch page first
-                if (videoDetails?.preloadedStream) {
-                    streamData = videoDetails.preloadedStream;
-                    sponsorData = { segments: videoDetails.preloadedSponsors || [] };
-                    formatsData = await getFormats(videoId).catch(() => ({ formats: [] }));
-                } else {
-                    // Fallback to individual fetches
-                    const results = await Promise.all([
-                        getVideoStream(videoId).catch(() => null),
-                        getSponsorSegments(videoId),
-                        getFormats(videoId).catch(() => ({ formats: [] }))
-                    ]);
-                    streamData = results[0];
-                    sponsorData = results[1];
-                    formatsData = results[2];
-                }
+                // 1. Race the stream data fetch with a 4s timeout for proactive fallback
+                const streamFetchPromise = videoDetails?.preloadedStream 
+                    ? Promise.resolve(videoDetails.preloadedStream)
+                    : getVideoStream(videoId).catch(() => null);
+
+                const timeoutPromise = new Promise((resolve) => 
+                    setTimeout(() => resolve({ isTimeout: true }), 4000)
+                );
+
+                // Fetch sponsors and formats in parallel with the race
+                const otherDataPromise = Promise.all([
+                    getSponsorSegments(videoId).catch(() => ({ segments: [] })),
+                    getFormats(videoId).catch(() => ({ formats: [] }))
+                ]);
+
+                const [winner, otherData] = await Promise.all([
+                    Promise.race([streamFetchPromise, timeoutPromise]),
+                    otherDataPromise
+                ]);
 
                 if (cancelled) return;
+                
+                sponsorData = otherData[0];
+                formatsData = otherData[1];
 
-                // FALLBACK: If backend can't provide stream (IP banned), use YouTube embed
-                if (!streamData || !streamData.url) {
-                    console.warn('[VideoPlayer] No stream URL from backend, falling back to YouTube embed');
+                // If timeout reached or no stream data, fallback proactively
+                if (winner?.isTimeout || !winner || !winner.url) {
+                    console.warn(winner?.isTimeout 
+                        ? '[VideoPlayer] Stream fetch timed out, using Embed fallback' 
+                        : '[VideoPlayer] No stream URL, using Embed fallback');
                     setUseEmbedFallback(true);
                     setLoading(false);
                     setSponsorSegments(sponsorData?.segments || []);
                     return;
                 }
+
+                streamData = winner;
 
                 // Get ALL video formats for quality menu
                 const allFormats = (formatsData.formats || [])
@@ -181,8 +191,8 @@ export default function VideoPlayer({ videoId, videoDetails }) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: videoDetails.title,
             artist: videoDetails.channelTitle,
-            artwork: videoDetails.thumbnail ? [
-                { src: videoDetails.thumbnail, sizes: '512x512', type: 'image/jpeg' }
+            artwork: (videoDetails.thumbnailHigh || videoDetails.thumbnail) ? [
+                { src: videoDetails.thumbnailHigh || videoDetails.thumbnail, sizes: '512x512', type: 'image/jpeg' }
             ] : [],
         });
 

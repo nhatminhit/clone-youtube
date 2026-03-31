@@ -9,9 +9,9 @@ export default function Watch() {
     const { id } = useParams();
     const location = useLocation();
     const { playVideo, toggleMiniMode, setPortalTarget, portalTarget } = usePlayer();
-    const [videoDetails, setVideoDetails] = useState(null);
+    const [videoDetails, setVideoDetails] = useState(location.state?.initialData || null);
     const [relatedVideos, setRelatedVideos] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!videoDetails);
     const [descExpanded, setDescExpanded] = useState(false);
 
     // Initial load and sync with global player
@@ -19,19 +19,45 @@ export default function Watch() {
         if (!id) return;
         let cancelled = false;
 
+        // If we have initial data from location state or cache, start playing immediately
+        if (videoDetails && videoDetails.id === id) {
+            document.title = `${videoDetails.title} - YouTube Premium Clone`;
+            playVideo({ ...videoDetails, id });
+        }
+
         async function load() {
-            setLoading(true);
+            // Only show loading skeleton if we have NO data at all
+            if (!videoDetails || videoDetails.id !== id) {
+                setLoading(true);
+            }
+            
             setDescExpanded(false);
             try {
                 const data = await getCombinedWatchData(id);
 
                 if (!cancelled) {
                     setVideoDetails(data.details);
-                    setRelatedVideos(data.related || []);
+                    
+                    // Lịch sử xem (LocalStorage)
+                    const history = JSON.parse(localStorage.getItem('yt_history') || '[]');
+                    const newEntry = { 
+                        id, 
+                        title: data.details.title, 
+                        thumbnail: data.details.thumbnail,
+                        channelTitle: data.details.channelTitle,
+                        watchedAt: new Date().toISOString()
+                    };
+                    const filtered = history.filter(item => item.id !== id).slice(0, 49);
+                    localStorage.setItem('yt_history', JSON.stringify([newEntry, ...filtered]));
+
+                    // Lazy load related videos
+                    getRelatedVideos(id, 15).then(res => {
+                        if (!cancelled) setRelatedVideos(res.items || []);
+                    });
 
                     if (data.details && data.details.title) {
                         document.title = `${data.details.title} - YouTube Premium Clone`;
-                        // Notify global player to play this video with preloaded data
+                        // Notify global player with full data (stream, sponsors)
                         playVideo({
                             ...data.details,
                             id,
@@ -50,7 +76,7 @@ export default function Watch() {
         load();
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return () => { cancelled = true; };
-    }, [id, playVideo]);
+    }, [id, playVideo]); // Removed videoDetails from deps to avoid loop; logic handles it.
 
     // Handle entering/exiting mini mode based on route
     useEffect(() => {

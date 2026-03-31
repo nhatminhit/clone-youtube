@@ -23,6 +23,7 @@ export default function VideoCard({ video, index = 0 }) {
     return (
         <Link
             to={`/watch/${video.id}`}
+            state={{ initialData: video }}
             className="video-card fade-in"
             id={`video-card-${video.id}`}
             style={{ animationDelay: `${index * 50}ms` }}
